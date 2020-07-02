@@ -12,7 +12,7 @@
 
 #define SKETCH_NAME "Battery Sensor"
 #define SKETCH_MAJOR_VER "0"
-#define SKETCH_MINOR_VER "5"
+#define SKETCH_MINOR_VER "6"
 
 // Sensors' Child IDs
 #define CHILD_ID_BATT 0
@@ -24,11 +24,7 @@ unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
 #endif
 
 #define VCC_CALIBRATION 1128380 // determined by voltage_calibration project
-
 VoltageReference vRef;
-const float VccMin = 1.8; // Minimum expected Vcc level, in Volts.
-const float VccMax = 3.3; // Maximum expected Vcc level, in Volts.
-
 
 // Globals
 float oldBatPercentage;
@@ -77,12 +73,15 @@ void sendValues() {
   // Battery voltage
   float volts = vRef.readVcc() / 1000; // convert millivolts to volts
 #ifdef MY_DEBUG
-  Serial.print("VCC (volts) = ");
+  Serial.print("Real VCC (volts) = ");
+  Serial.println(volts);
+  volts = volts + random(0, 5)/100;
+  Serial.print("Random shifted VCC (volts) = ");
   Serial.println(volts);
 #endif
   send(msgBatt.set(volts, 3));
   // Battery percentage
-  float perc = 100.0 * (volts-VccMin) / (VccMax-VccMin);
+  float perc = 100.0 * (volts-VCC_MIN) / (VCC_MAX-VCC_MIN);
   perc = constrain(perc, 0.0, 100.0);
 #ifdef MY_DEBUG
   Serial.print("VCC (percentage) = ");
