@@ -10,13 +10,15 @@
 
 #include <MySensors.h>
 #include <VoltageReference.h>
+#include <HCSR04.h>
 
-#define SKETCH_NAME "Battery Sensor"
+#define SKETCH_NAME "Distance Sensor"
 #define SKETCH_MAJOR_VER "0"
 #define SKETCH_MINOR_VER "7"
 
 // Sensors' Child IDs
 #define CHILD_ID_BATT 0
+#define CHILD_ID_DIST 1
 
 #ifdef MY_DEBUG
 unsigned long SLEEP_TIME = 10 * 1000L;  // 10s
@@ -28,11 +30,17 @@ unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
 #define VCC_CALIBRATION 1128380 // determined by voltage_calibration project
 VoltageReference vRef;
 
+#define TRIG_PIN 7
+#define ECHO_PIN 6
+UltraSonicDistanceSensor distanceSensor(TRIG_PIN, ECHO_PIN);
+
 // Globals
 float oldBatPercentage;
-int unusedPins[] = {2, 3, 4, 5, 6, 7, 8};
+int unusedPins[] = {3, 4, 5};
+
 // MySensors messages
 MyMessage msgBatt(CHILD_ID_BATT, V_VOLTAGE);
+MyMessage msgDist(CHILD_ID_DIST, V_DISTANCE);
 
 /*
  * MySensors 2.x presentation
@@ -43,6 +51,7 @@ void presentation() {
 #endif
   sendSketchInfo(SKETCH_NAME, SKETCH_MAJOR_VER "." SKETCH_MINOR_VER);
   present(CHILD_ID_BATT, S_MULTIMETER, "Battery Voltage");
+  present(CHILD_ID_DIST, S_DISTANCE, "Water Tank Level");
 }
 
 /*
@@ -99,7 +108,8 @@ void sendValues() {
     oldBatPercentage = perc;
   }
   // Send other sensor values
-  // ...
+  double dist = distanceSensor.measureDistanceCm();
+  send(msgDist.set(dist, 3));
 }
 
 /*
