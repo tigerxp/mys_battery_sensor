@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // MySensors configuration
-#define MY_DEBUG
+// #define MY_DEBUG
 #define MY_RADIO_RF24
 #define MY_BAUD_RATE 9600
 
@@ -15,7 +15,7 @@
 
 #define SKETCH_NAME "Distance Sensor"
 #define SKETCH_MAJOR_VER "0"
-#define SKETCH_MINOR_VER "7"
+#define SKETCH_MINOR_VER "8"
 
 // Sensors' Child IDs
 #define CHILD_ID_BATT 0
@@ -26,7 +26,7 @@
 #ifdef MY_DEBUG
 unsigned long SLEEP_TIME = 10 * 1000L;  // 10s
 #else
-unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
+unsigned long SLEEP_TIME = 5*60*1000L; // 5min,  h*min*sec*1000
 #endif
 
 // #define FAKE_VCC uncomment to enable VCC "deviations"
@@ -98,11 +98,9 @@ void sendValues() {
   Serial.println("sendValues");
 #endif
   // Battery voltage
-  float volts = vRef.readVcc() / 1000; // convert millivolts to volts
-#ifdef MY_DEBUG
+  float volts = vRef.readVcc() / 1000.0; // convert millivolts to volts
   Serial.print("VCC (volts) = ");
   Serial.println(volts);
-#endif
 #ifdef FAKE_VCC
   volts += random(-5, 5)/100.0;
   Serial.print("Random shifted VCC (volts) = ");
@@ -112,10 +110,8 @@ void sendValues() {
   // Battery percentage
   float perc = 100.0 * (volts-VCC_MIN) / (VCC_MAX-VCC_MIN);
   perc = constrain(perc, 0.0, 100.0);
-#ifdef MY_DEBUG
   Serial.print("VCC (percentage) = ");
   Serial.println(perc);
-#endif
   if (perc != oldBatPercentage) {
     sendBatteryLevel(perc);
     oldBatPercentage = perc;
@@ -125,17 +121,21 @@ void sendValues() {
   si7021_thc data = siSensor.getTempAndRH();
   float temperature = data.celsiusHundredths / 100.0;
   int humidity = data.humidityPercent;
-#ifdef MY_DEBUG
-  Serial.print("T: ");
+  Serial.print("Temperature: ");
   Serial.println(temperature);
-  Serial.print("H: ");
+  Serial.print("Humidity: ");
   Serial.println(humidity);
-#endif
   send(msgTemp.set(temperature, 1));
   send(msgHum.set(humidity));
   // Distance
   double dist = distanceSensor.measureDistanceCm();
-  send(msgDist.set(dist, 3));
+  Serial.print("Distance: ");
+  Serial.println(dist);
+  // Do not send failed measurements of -1
+  if (dist > 0) {
+    dist = dist/100.0;
+    send(msgDist.set(dist, 4));
+  }
 }
 
 /*
