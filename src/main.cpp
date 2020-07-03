@@ -1,5 +1,5 @@
 /*
- *  Battery-powered MySensors-2.x sensor
+ *  Powered MySensors-2.x sensor
  */
 #include <Arduino.h>
 
@@ -7,32 +7,29 @@
 #define MY_DEBUG
 #define MY_RADIO_RF24
 #define MY_BAUD_RATE 9600
+#define MY_REPEATER_FEATURE
 
 #include <MySensors.h>
 #include <VoltageReference.h>
 
-#define SKETCH_NAME "Battery Sensor"
+#define SKETCH_NAME "Repeater Node"
 #define SKETCH_MAJOR_VER "0"
 #define SKETCH_MINOR_VER "7"
 
 // Sensors' Child IDs
-#define CHILD_ID_BATT 0
-
-#ifdef MY_DEBUG
-unsigned long SLEEP_TIME = 10 * 1000L;  // 10s
-#else
-unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
-#endif
+#define CHILD_ID_VOLTAGE 0
+// #d254efine SEND_PERIOD 200000 // Every 20000 loops will send data
+unsigned long UPDATE_PERIOD = 30*1000L; // 10s
 
 // #define FAKE_VCC uncomment to enable VCC "deviations"
 #define VCC_CALIBRATION 1128380 // determined by voltage_calibration project
 VoltageReference vRef;
 
 // Globals
-float oldBatPercentage;
-int unusedPins[] = {2, 3, 4, 5, 6, 7, 8};
+float oldVoltage = -1;
+unsigned long lastTx = 0;
 // MySensors messages
-MyMessage msgBatt(CHILD_ID_BATT, V_VOLTAGE);
+MyMessage msgVoltage(CHILD_ID_VOLTAGE, V_VOLTAGE);
 
 /*
  * MySensors 2.x presentation
@@ -42,7 +39,7 @@ void presentation() {
   Serial.println("presentation");
 #endif
   sendSketchInfo(SKETCH_NAME, SKETCH_MAJOR_VER "." SKETCH_MINOR_VER);
-  present(CHILD_ID_BATT, S_MULTIMETER, "Battery Voltage");
+  present(CHILD_ID_VOLTAGE, S_MULTIMETER, "VCC Voltage");
 }
 
 /*
@@ -52,16 +49,7 @@ void setup() {
 #ifdef MY_DEBUG
   Serial.println("setup");
 #endif
-  // Reset unused pins
-  int count = sizeof(unusedPins)/sizeof(int);
-  for (int i = 0; i < count; i++) {
-    pinMode(unusedPins[i], INPUT);
-    digitalWrite(unusedPins[i], LOW);
-  }
-#ifdef FAKE_VCC
-  randomSeed(analogRead(0));
-#endif
-  oldBatPercentage = -1;
+  oldVoltage = -1;
 #ifdef MY_DEBUG
   Serial.println("Calibrating voltage reference");
 #endif
@@ -69,35 +57,18 @@ void setup() {
 }
 
 /*
- * Send sensor and battery values
+ * Send sensor and voltage values
  */
 void sendValues() {
 #ifdef MY_DEBUG
   Serial.println("sendValues");
 #endif
-  // Battery voltage
+  // Voltage
   float volts = vRef.readVcc() / 1000; // convert millivolts to volts
-#ifdef MY_DEBUG
   Serial.print("VCC (volts) = ");
   Serial.println(volts);
-#endif
-#ifdef FAKE_VCC
-  volts += random(-5, 5)/100.0;
-  Serial.print("Random shifted VCC (volts) = ");
-  Serial.println(volts);
-#endif
-  send(msgBatt.set(volts, 3));
-  // Battery percentage
-  float perc = 100.0 * (volts-VCC_MIN) / (VCC_MAX-VCC_MIN);
-  perc = constrain(perc, 0.0, 100.0);
-#ifdef MY_DEBUG
-  Serial.print("VCC (percentage) = ");
-  Serial.println(perc);
-#endif
-  if (perc != oldBatPercentage) {
-    sendBatteryLevel(perc);
-    oldBatPercentage = perc;
-  }
+  send(msgVoltage.set(volts, 3));
+  oldVoltage = volts;
   // Send other sensor values
   // ...
 }
@@ -106,14 +77,8 @@ void sendValues() {
  * Loop
  */
 void loop() {
-#ifdef DEBUG
-  Serial.println("loop");
-#endif
-  if (oldBatPercentage == -1) { // first start
-    // Send the values before sleeping
+  if (oldVoltage == -1 || millis() - lastTx > UPDATE_PERIOD) { // first start or time to send
     sendValues();
+    lastTx = millis();
   }
-  sleep(SLEEP_TIME);
-  // Read sensors and send on wakeup
-  sendValues();
 }
