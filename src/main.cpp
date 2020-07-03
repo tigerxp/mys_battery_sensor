@@ -18,7 +18,7 @@
 #define CHILD_ID_BATT 0
 
 #ifdef MY_DEBUG
-unsigned long SLEEP_TIME = 5 * 1000L;  // 5s
+unsigned long SLEEP_TIME = 10 * 1000L;  // 10s
 #else
 unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
 #endif
@@ -56,6 +56,9 @@ void setup() {
     pinMode(unusedPins[i], INPUT);
     digitalWrite(unusedPins[i], LOW);
   }
+#ifdef FAKE_VCC
+  randomSeed(analogRead(0));
+#endif
   oldBatPercentage = -1;
 #ifdef MY_DEBUG
   Serial.println("Calibrating voltage reference");
@@ -75,7 +78,7 @@ void sendValues() {
 #ifdef MY_DEBUG
   Serial.print("Real VCC (volts) = ");
   Serial.println(volts);
-  volts = volts + random(0, 5)/100;
+  volts += random(-5, 5)/100.0;
   Serial.print("Random shifted VCC (volts) = ");
   Serial.println(volts);
 #endif
