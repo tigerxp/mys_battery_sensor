@@ -3,6 +3,7 @@
  */
 #include <Arduino.h>
 
+// MySensors configuration
 #define MY_DEBUG
 #define MY_RADIO_RF24
 #define MY_BAUD_RATE 9600
@@ -12,7 +13,7 @@
 
 #define SKETCH_NAME "Battery Sensor"
 #define SKETCH_MAJOR_VER "0"
-#define SKETCH_MINOR_VER "6"
+#define SKETCH_MINOR_VER "7"
 
 // Sensors' Child IDs
 #define CHILD_ID_BATT 0
@@ -23,6 +24,7 @@ unsigned long SLEEP_TIME = 10 * 1000L;  // 10s
 unsigned long SLEEP_TIME = 10*60*1000; // 10min,  h*min*sec*1000
 #endif
 
+// #define FAKE_VCC uncomment to enable VCC "deviations"
 #define VCC_CALIBRATION 1128380 // determined by voltage_calibration project
 VoltageReference vRef;
 
@@ -76,8 +78,10 @@ void sendValues() {
   // Battery voltage
   float volts = vRef.readVcc() / 1000; // convert millivolts to volts
 #ifdef MY_DEBUG
-  Serial.print("Real VCC (volts) = ");
+  Serial.print("VCC (volts) = ");
   Serial.println(volts);
+#endif
+#ifdef FAKE_VCC
   volts += random(-5, 5)/100.0;
   Serial.print("Random shifted VCC (volts) = ");
   Serial.println(volts);
